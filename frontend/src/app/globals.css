@@ -1,0 +1,347 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom styles for vertical video preview */
+.vertical-preview-container {
+  @apply relative mx-auto;
+  max-width: 320px; /* 9:16 aspect at reasonable size */
+  aspect-ratio: 9 / 16;
+}
+
+.vertical-preview-video {
+  @apply absolute inset-0 w-full h-full object-cover;
+  transform-origin: center center;
+}
+
+/* CSS Transform rotation logic for vertical preview */
+.vertical-preview-video.rotated {
+  transform: rotate(90deg) scale(1.78); /* Scale to fill after rotation */
+}
+
+/* Smooth transitions for preview mode switching */
+.video-transform-transition {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Raw 16:9 view styles */
+.raw-video-container {
+  @apply relative w-full max-w-4xl mx-auto;
+  aspect-ratio: 16 / 9;
+}
+
+.raw-video {
+  @apply w-full h-full object-cover;
+  transform: none;
+}
+
+/* Export button states */
+.export-button-processing {
+  @apply relative overflow-hidden;
+}
+
+.export-button-processing::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
+  animation: shimmer 2s infinite;
+  transform: translateX(-100%);
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Video preview overlay styles */
+.video-overlay {
+  @apply absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.video-container:hover .video-overlay {
+  opacity: 1;
+}
+
+/* Platform preset buttons */
+.platform-preset {
+  @apply transition-all duration-200 hover:scale-105;
+}
+
+.platform-preset.selected {
+  @apply ring-2 ring-primary ring-offset-2;
+}
+
+/* Modern card styles */
+.modern-card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200;
+}
+
+.modern-card-dark {
+  @apply bg-gray-900 rounded-xl shadow-lg border border-gray-800 hover:shadow-xl transition-shadow duration-200;
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  @apply bg-gradient-to-br from-primary via-primary/80 to-primary/60;
+}
+
+.gradient-secondary {
+  @apply bg-gradient-to-br from-gray-100 via-gray-50 to-white;
+}
+
+/* Button enhancements */
+.button-glow {
+  @apply relative overflow-hidden;
+}
+
+.button-glow::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent;
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.button-glow:hover::before {
+  transform: translateX(100%);
+}
+
+/* Smooth focus states */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white;
+}
+
+/* Enhanced form inputs */
+.form-input {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+}
+
+/* Animated borders */
+.animated-border {
+  @apply relative;
+}
+
+.animated-border::after {
+  content: '';
+  @apply absolute inset-0 rounded-lg;
+  background: linear-gradient(45deg, transparent 30%, theme('colors.primary.DEFAULT') 50%, transparent 70%);
+  background-size: 200% 200%;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+
+.animated-border:hover::after {
+  opacity: 0.1;
+  animation: gradient-shift 3s linear infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Loading spinner */
+.spinner {
+  @apply inline-block w-8 h-8 border-4 border-solid rounded-full;
+  border-color: theme('colors.primary.DEFAULT') transparent;
+  animation: spin 1s linear infinite;
+}
+
+/* Video player controls */
+.video-controls {
+  @apply absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4;
+}
+
+/* Generation status badges */
+.status-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-badge.pending {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-badge.processing {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.status-badge.completed {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-badge.failed {
+  @apply bg-red-100 text-red-800;
+}
+
+/* Dropzone styles */
+.dropzone {
+  @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer transition-colors;
+}
+
+.dropzone:hover {
+  @apply border-primary bg-primary/5;
+}
+
+.dropzone.active {
+  @apply border-primary bg-primary/10;
+}
+
+/* Progress bar */
+.progress-bar {
+  @apply relative h-2 bg-gray-200 rounded-full overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply absolute top-0 left-0 h-full bg-primary transition-all duration-300 ease-out;
+}
+
+/* Crop adjuster overlay */
+.crop-overlay {
+  @apply absolute inset-0 pointer-events-none;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.5) 0%,
+    transparent 20%,
+    transparent 80%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+.crop-handle {
+  @apply absolute w-8 h-8 bg-white rounded-full border-2 border-primary cursor-move;
+  pointer-events: all;
+}
+
+/* Prompt input */
+.prompt-textarea {
+  @apply w-full min-h-[120px] p-3 border rounded-lg resize-y;
+  @apply focus:ring-2 focus:ring-primary focus:border-transparent;
+}
+
+/* Export options grid */
+.export-options {
+  @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.export-option-card {
+  @apply p-4 border rounded-lg cursor-pointer transition-all;
+  @apply hover:border-primary hover:shadow-md;
+}
+
+.export-option-card.selected {
+  @apply border-primary bg-primary/5;
+}
+
+/* Platform preset buttons */
+.preset-button {
+  @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  @apply bg-secondary hover:bg-secondary/80;
+}
+
+.preset-button.active {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive video grid */
+.video-grid {
+  @apply grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

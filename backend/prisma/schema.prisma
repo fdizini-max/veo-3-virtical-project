@@ -1,0 +1,503 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// User Management
+// ================================
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  username        String?        @unique
+  passwordHash    String
+  
+  // Profile
+  firstName       String?
+  lastName        String?
+  avatarUrl       String?
+  
+  // Account Status
+  isActive        Boolean        @default(true)
+  isVerified      Boolean        @default(false)
+  verificationToken String?
+  
+  // Subscription
+  subscriptionTier SubscriptionTier @default(FREE)
+  subscriptionEndDate DateTime?
+  stripeCustomerId String?       @unique
+  
+  // Usage Limits
+  dailyGenerationCount Int       @default(0)
+  dailyGenerationResetAt DateTime @default(now())
+  totalGenerationCount Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  lastLoginAt     DateTime?
+  
+  // Relations
+  jobs            Job[]
+  generations     Generation[]
+  exports         Export[]
+  media           Media[]
+  prompts         SavedPrompt[]
+  presets         ExportPreset[]
+  apiKeys         ApiKey[]
+  billingHistory  BillingHistory[]
+  
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  key         String    @unique
+  name        String
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([key])
+  @@index([userId])
+}
+
+// ================================
+// Core Job System (as requested)
+// ================================
+
+model Job {
+  id          String   @id @default(cuid())
+  type        JobType  // GENERATE, EXPORT
+  status      Status   @default(PENDING) // PENDING, PROCESSING, COMPLETED, FAILED
+  prompt      String?  @db.Text
+  mode        Mode     @default(VERTICAL) // VERTICAL, HORIZONTAL
+  inputFile   String?
+  outputFile  String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Additional useful fields
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress    Int      @default(0) // 0-100 for progress tracking
+  errorMessage String? // Error details if status is FAILED
+  startedAt   DateTime? // When processing started
+  completedAt DateTime? // When job finished
+  
+  // Relations
+  generation  Generation?
+  
+  @@index([type])
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum JobType {
+  GENERATE
+  EXPORT
+}
+
+enum Status {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum Mode {
+  VERTICAL
+  HORIZONTAL
+}
+
+// ================================
+// Video Generation (Extended)
+// ================================
+
+model Generation {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Link to core job system
+  coreJobId       String?         @unique
+  coreJob         Job?            @relation(fields: [coreJobId], references: [id])
+  
+  // Generation Configuration
+  mode            GenerationMode  @default(VERTICAL_FIRST)
+  prompt          String          @db.Text
+  processedPrompt String?         @db.Text  // After vertical logic applied
+  referenceImageId String?
+  referenceImage  Media?          @relation("ReferenceImage", fields: [referenceImageId], references: [id])
+  
+  // Veo 3 Settings
+  model           String          @default("veo-3.0-generate-preview")
+  duration        Int             @default(5)  // seconds
+  fps             Int             @default(30)
+  resolution      String          @default("1920x1080")
+  backgroundMode  BackgroundMode? @default(MINIMAL_GRADIENT)
+  
+  // Job Status
+  status          JobStatus       @default(PENDING)
+  bullJobId       String?         @unique  // BullMQ job ID
+  progress        Int             @default(0)
+  errorMessage    String?
+  
+  // API Response
+  veoOperationId  String?         @unique
+  veoResponse     Json?
+  
+  // Output
+  outputMediaId   String?         @unique
+  outputMedia     Media?          @relation("GeneratedVideo", fields: [outputMediaId], references: [id])
+  
+  // Metadata
+  estimatedCost   Float?
+  actualCost      Float?
+  processingTime  Int?            // milliseconds
+  
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  // Relations
+  exports         Export[]
+  
+  @@index([userId])
+  @@index([status])
+  @@index([bullJobId])
+  @@index([veoOperationId])
+}
+
+enum GenerationMode {
+  VERTICAL_FIRST  // Rotated 16:9 for vertical output
+  HORIZONTAL      // Standard horizontal
+}
+
+enum BackgroundMode {
+  SOLID_COLOR
+  GREENSCREEN
+  MINIMAL_GRADIENT
+  CUSTOM
+}
+
+enum JobStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ================================
+// Export Jobs
+// ================================
+
+model Export {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Source
+  generationId    String?
+  generation      Generation?   @relation(fields: [generationId], references: [id])
+  sourceMediaId   String
+  sourceMedia     Media         @relation("ExportSource", fields: [sourceMediaId], references: [id])
+  
+  // Export Configuration
+  exportType      ExportType
+  outputFormat    OutputFormat  @default(MP4)
+  preset          String?       // TikTok, Reels, Shorts, Custom
+  
+  // Video Settings
+  resolution      String        @default("1080x1920")
+  fps             Int           @default(30)
+  bitrate         String?
+  codec           String        @default("libx264")
+  crf             Int           @default(18)
+  
+  // Crop Settings (for vertical export)
+  cropX           Int?
+  cropY           Int?
+  cropWidth       Int?
+  cropHeight      Int?
+  
+  // FFmpeg Command
+  ffmpegCommand   String        @db.Text
+  
+  // Job Status
+  status          JobStatus     @default(PENDING)
+  jobId           String?       @unique
+  progress        Int           @default(0)
+  errorMessage    String?
+  
+  // Output
+  outputMediaId   String?       @unique
+  outputMedia     Media?        @relation("ExportOutput", fields: [outputMediaId], references: [id])
+  
+  // Metadata
+  processingTime  Int?          // milliseconds
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([jobId])
+}
+
+enum ExportType {
+  METADATA_ROTATE    // Fast, metadata-only rotation
+  GUARANTEED_UPRIGHT // Re-encode with rotation and crop
+  HORIZONTAL         // Pass-through or re-encode
+  SCALE_PAD         // Scale and pad to vertical
+}
+
+enum OutputFormat {
+  MP4
+  MOV
+  WEBM
+  GIF
+}
+
+// ================================
+// Media Storage
+// ================================
+
+model Media {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // File Information
+  filename        String
+  originalName    String
+  mimeType        String
+  fileSize        Int           // bytes
+  
+  // Storage
+  storageType     StorageType   @default(LOCAL)
+  storagePath     String        // Path in storage system
+  publicUrl       String?       // CDN URL if available
+  thumbnailUrl    String?
+  
+  // Video Metadata
+  duration        Float?        // seconds
+  width           Int?
+  height          Int?
+  fps             Float?
+  codec           String?
+  hasAudio        Boolean       @default(true)
+  
+  // Watermark Info
+  hasSynthId      Boolean       @default(false)  // Veo 3 watermark
+  
+  // Status
+  status          MediaStatus   @default(UPLOADING)
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  expiresAt       DateTime?     // For temporary files
+  
+  // Relations (reverse)
+  generationsAsReference Generation[] @relation("ReferenceImage")
+  generationsAsOutput    Generation[] @relation("GeneratedVideo")
+  exportsAsSource        Export[]     @relation("ExportSource")
+  exportsAsOutput        Export[]     @relation("ExportOutput")
+  
+  @@index([userId])
+  @@index([status])
+  @@index([storageType])
+}
+
+enum StorageType {
+  LOCAL
+  GCS     // Google Cloud Storage
+  AWS_S3
+  AZURE
+}
+
+enum MediaStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+  DELETED
+}
+
+// ================================
+// Saved Prompts & Presets
+// ================================
+
+model SavedPrompt {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name            String
+  description     String?
+  prompt          String        @db.Text
+  mode            GenerationMode @default(VERTICAL_FIRST)
+  tags            String[]      @default([])
+  
+  isPublic        Boolean       @default(false)
+  usageCount      Int           @default(0)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([userId])
+  @@index([isPublic])
+}
+
+model ExportPreset {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name            String
+  description     String?
+  platform        String?       // TikTok, Reels, Shorts, etc.
+  
+  // Settings
+  exportType      ExportType
+  resolution      String
+  fps             Int
+  bitrate         String?
+  codec           String
+  crf             Int
+  
+  // Default Crop Settings
+  defaultCropX    Int?
+  defaultCropY    Int?
+  
+  isDefault       Boolean       @default(false)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([userId])
+  @@index([platform])
+}
+
+// ================================
+// Billing & Usage
+// ================================
+
+model BillingHistory {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type            BillingType
+  amount          Float
+  currency        String        @default("USD")
+  description     String
+  
+  stripeInvoiceId String?       @unique
+  stripePaymentIntentId String? @unique
+  
+  status          PaymentStatus @default(PENDING)
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([userId])
+  @@index([stripeInvoiceId])
+}
+
+enum BillingType {
+  SUBSCRIPTION
+  ONE_TIME
+  CREDIT_PURCHASE
+  REFUND
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+// ================================
+// System & Analytics
+// ================================
+
+model SystemLog {
+  id              String        @id @default(uuid())
+  
+  level           LogLevel
+  category        String
+  message         String        @db.Text
+  metadata        Json?
+  
+  userId          String?
+  requestId       String?
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([level])
+  @@index([category])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum LogLevel {
+  ERROR
+  WARN
+  INFO
+  DEBUG
+}
+
+model Analytics {
+  id              String        @id @default(uuid())
+  
+  eventType       String
+  eventData       Json
+  
+  userId          String?
+  sessionId       String?
+  
+  // Context
+  userAgent       String?
+  ipAddress       String?
+  country         String?
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([eventType])
+  @@index([userId])
+  @@index([createdAt])
+}

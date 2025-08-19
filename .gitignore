@@ -1,0 +1,133 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production builds
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.iml
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+prisma/migrations/
+
+# Media and uploads
+uploads/
+exports/
+temp/
+*.mp4
+*.mp3
+*.avi
+*.mov
+*.webm
+*.mkv
+*.flv
+*.wmv
+
+# Storage
+minio_data/
+postgres_data/
+redis_data/
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.p12
+certificates/
+ssl/
+
+# Credentials
+credentials/
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!next.config.js
+!tailwind.config.js
+
+# Cache
+.cache/
+.parcel-cache/
+.turbo/
+.vercel/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+.history/
+.vscode-test/
+*.pid
+*.seed
+*.pid.lock
+.wrangler/
+.contentlayer/
+
+# Python (for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Docker volumes (local dev)
+docker-volumes/
