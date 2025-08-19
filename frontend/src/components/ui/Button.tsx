@@ -37,19 +37,16 @@ export interface ButtonProps
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild, ...props }, ref) => {
-    if (asChild) {
-      // When asChild is true, we would normally use a slot/polymorphic component
-      // For now, we'll just render a regular button and ignore asChild
-      console.warn('asChild prop is not yet implemented in Button component');
-    }
-
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    const Comp = asChild ? 'span' : 'button';
     return (
-      <button
+      <Comp
         className={clsx(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
-      />
+      >
+        {children}
+      </Comp>
     );
   }
 );

@@ -160,21 +160,24 @@ export function GenerationForm() {
     }
     
     try {
-      // Prepare generation request
-      const generationRequest = {
-        prompt: formData.prompt,
-        mode: formData.mode,
-        duration: formData.duration,
-        fps: formData.fps,
-        resolution: formData.resolution,
-        backgroundMode: formData.backgroundMode,
-        useFastModel: formData.useFastModel,
-        referenceImage: formData.referenceImage,
-      };
+      // Prepare generation request as FormData
+      const formDataToSend = new FormData();
+      formDataToSend.append('prompt', formData.prompt);
+      formDataToSend.append('mode', formData.mode);
+      formDataToSend.append('duration', formData.duration.toString());
+      formDataToSend.append('fps', formData.fps.toString());
+      formDataToSend.append('resolution', formData.resolution);
+      formDataToSend.append('backgroundMode', formData.backgroundMode);
+      formDataToSend.append('useFastModel', formData.useFastModel.toString());
       
-      await generateMutation.mutateAsync(generationRequest);
+      if (formData.referenceImage) {
+        formDataToSend.append('referenceImage', formData.referenceImage);
+      }
+      
+      await generateMutation.mutateAsync(formDataToSend);
     } catch (error) {
       console.error('Generation submission failed:', error);
+      setValidationErrors([error.message || 'Generation failed. Please try again.']);
     }
   }, [formData, validateForm, generateMutation]);
 

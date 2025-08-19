@@ -1,4 +1,4 @@
-import { VideoPreview } from '@/components/VideoPreview';
+import { VideoPreviewWithExport } from '@/components/VideoPreviewWithExport';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
@@ -26,34 +26,6 @@ export default async function GenerationResultPage({
 }) {
   const result = await getGenerationResult(params.id);
 
-  const handleExport = async (exportType: string, options?: any) => {
-    try {
-      const response = await fetch(`/api/v1/generate/${params.id}/export`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          exportType,
-          ...options,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
-
-      const exportJob = await response.json();
-      console.log('Export started:', exportJob);
-      
-      // TODO: Redirect to export status page or show progress
-      alert(`Export started! Job ID: ${exportJob.id}`);
-      
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
-    }
-  };
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -124,11 +96,10 @@ export default async function GenerationResultPage({
       </Card>
 
       {/* Video Preview Component */}
-      <VideoPreview
+      <VideoPreviewWithExport
         videoUrl={result.videoUrl}
         mode={result.mode as 'VERTICAL' | 'HORIZONTAL'}
         jobId={result.id}
-        onExport={handleExport}
       />
 
       {/* Additional actions */}

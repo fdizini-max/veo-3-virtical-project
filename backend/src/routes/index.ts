@@ -6,54 +6,60 @@ import { logger } from '@/utils/logger';
 
 const router = Router();
 
-// API version prefix
-const API_VERSION = '/api/v1';
+// API prefixes (support both /api and /api/v1)
+const API_PREFIXES = ['/api', '/api/v1'];
 
-// Mount route modules
-router.use(`${API_VERSION}/generation`, generationRoutes);
-router.use(`${API_VERSION}/generate`, generateRoutes);
-router.use(`${API_VERSION}/upload`, uploadRoutes);
+// Mount route modules under both prefixes
+for (const prefix of API_PREFIXES) {
+  router.use(`${prefix}/generation`, generationRoutes);
+  router.use(`${prefix}/generate`, generateRoutes);
+  router.use(`${prefix}/upload`, uploadRoutes);
+}
 
-// API health check
-router.get(`${API_VERSION}/health`, (req, res) => {
-  res.json({
-    status: 'healthy',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    services: {
-      api: 'running',
-      database: 'connected', // TODO: Add actual health checks
-      redis: 'connected',
-      queue: 'running'
-    }
+// API health check on both prefixes
+for (const prefix of API_PREFIXES) {
+  router.get(`${prefix}/health`, (req, res) => {
+    res.json({
+      status: 'healthy',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      services: {
+        api: 'running',
+        database: 'connected', // TODO: Add actual health checks
+        redis: 'connected',
+        queue: 'running'
+      }
+    });
   });
-});
+}
 
-// API info endpoint
-router.get(`${API_VERSION}/info`, (req, res) => {
-  res.json({
-    name: 'Vertical Veo 3 API',
-    version: '1.0.0',
-    description: 'AI-powered vertical video generation API',
-    endpoints: [
-      'GET /api/v1/health',
-      'GET /api/v1/generation/limits',
-      'POST /api/v1/generation/create',
-      'GET /api/v1/generation/:id',
-      'GET /api/v1/generation/list',
-      'GET /api/v1/generation/stats',
-      'POST /api/v1/generate',
-      'GET /api/v1/generate/:id',
-      'POST /api/v1/generate/:id/export',
-      'DELETE /api/v1/generate/:id',
-      'POST /api/v1/upload',
-      'GET /api/v1/upload/:id',
-      'DELETE /api/v1/upload/:id',
-      'POST /api/v1/upload/batch'
-    ],
-    documentation: 'https://docs.vertical-veo3.com'
+// API info endpoint on both prefixes
+for (const prefix of API_PREFIXES) {
+  router.get(`${prefix}/info`, (req, res) => {
+    res.json({
+      name: 'Vertical Veo 3 API',
+      version: '1.0.0',
+      description: 'AI-powered vertical video generation API',
+      endpoints: [
+        'GET /api/health',
+        'GET /api/generation/limits',
+        'POST /api/generation/create',
+        'GET /api/generation/:id',
+        'GET /api/generation/list',
+        'GET /api/generation/stats',
+        'POST /api/generate',
+        'GET /api/generate/:id',
+        'POST /api/generate/:id/export',
+        'DELETE /api/generate/:id',
+        'POST /api/upload',
+        'GET /api/upload/:id',
+        'DELETE /api/upload/:id',
+        'POST /api/upload/batch'
+      ],
+      documentation: 'https://docs.vertical-veo3.com'
+    });
   });
-});
+}
 
 // Catch-all for undefined API routes
 router.use('*', (req, res) => {
@@ -67,20 +73,20 @@ router.use('*', (req, res) => {
     error: 'API endpoint not found',
     message: `${req.method} ${req.originalUrl} is not a valid API endpoint`,
     availableEndpoints: [
-      'GET /api/v1/health',
-      'GET /api/v1/generation/limits',
-      'POST /api/v1/generation/create',
-      'GET /api/v1/generation/:id',
-      'GET /api/v1/generation/list',
-      'GET /api/v1/generation/stats',
-      'POST /api/v1/generate',
-      'GET /api/v1/generate/:id',
-      'POST /api/v1/generate/:id/export',
-      'DELETE /api/v1/generate/:id',
-      'POST /api/v1/upload',
-      'GET /api/v1/upload/:id',
-      'DELETE /api/v1/upload/:id',
-      'POST /api/v1/upload/batch'
+      'GET /api/health',
+      'GET /api/generation/limits',
+      'POST /api/generation/create',
+      'GET /api/generation/:id',
+      'GET /api/generation/list',
+      'GET /api/generation/stats',
+      'POST /api/generate',
+      'GET /api/generate/:id',
+      'POST /api/generate/:id/export',
+      'DELETE /api/generate/:id',
+      'POST /api/upload',
+      'GET /api/upload/:id',
+      'DELETE /api/upload/:id',
+      'POST /api/upload/batch'
     ]
   });
 });

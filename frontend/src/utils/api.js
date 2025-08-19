@@ -1,17 +1,26 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 async function handleResponse(res) {
   if (!res.ok) {
+    const text = await res.text();
     let message = `Request failed with ${res.status}`;
     try {
-      const data = await res.json();
+      const data = JSON.parse(text);
       message = data?.error || data?.message || message;
-    } catch (_) {}
+    } catch (_) {
+      // fall through
+    }
     throw new Error(message);
   }
   const contentType = res.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) return res.json();
-  return res.text();
+  const text = await res.text();
+  if (!contentType.includes('application/json')) return text;
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('Bad JSON payload:', text);
+    throw e;
+  }
 }
 
 export class APIClient {
@@ -25,7 +34,9 @@ export class APIClient {
   async createGenerationJob(prompt, mode, imageFile, options = {}) {
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('mode', (mode || 'VERTICAL').toString().toUpperCase());
+    // Map legacy 'VERTICAL' to backend's 'VERTICAL_FIRST'
+    const normalizedMode = (mode || 'VERTICAL').toString().toUpperCase();
+    formData.append('mode', normalizedMode === 'VERTICAL' ? 'VERTICAL_FIRST' : normalizedMode);
 
     if (options.duration) formData.append('duration', String(options.duration));
     if (options.fps) formData.append('fps', String(options.fps));
@@ -40,7 +51,7 @@ export class APIClient {
       formData.append('image', imageFile);
     }
 
-    const res = await fetch(`${API_BASE}/api/v1/generate`, {
+    const res = await fetch(`${API_BASE}/v1/generate`, {
       method: 'POST',
       body: formData,
     });
@@ -52,7 +63,7 @@ export class APIClient {
    * @param {string} jobId
    */
   async getJobStatus(jobId) {
-    const res = await fetch(`${API_BASE}/api/v1/generate/${jobId}`);
+    const res = await fetch(`${API_BASE}/v1/generate/${jobId}`);
     return handleResponse(res);
   }
 
@@ -73,7 +84,7 @@ export class APIClient {
       cropY: cropOptions.y,
     };
 
-    const res = await fetch(`${API_BASE}/api/v1/generate/${jobId}/export`, {
+    const res = await fetch(`${API_BASE}/v1/generate/${jobId}/export`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

@@ -7,9 +7,23 @@ import { config } from '@/config';
 import { mockDb } from '@/db/mock-adapter';
 import multer from 'multer';
 import path from 'path';
+import { logger as appLogger } from '@/utils/logger';
 
 const router = Router();
 let prisma: any = null;
+function safeParseObject(maybeJson: unknown): any {
+  if (typeof maybeJson !== 'string') return maybeJson;
+  try {
+    const parsed = JSON.parse(maybeJson);
+    if (parsed && typeof parsed === 'object') return parsed;
+    return {};
+  } catch (e: any) {
+    try {
+      appLogger.warn('Failed to parse job.metadata JSON, defaulting to object', { error: e?.message });
+    } catch {}
+    return {};
+  }
+}
 
 // Initialize Prisma client with error handling
 async function initializePrisma() {
@@ -51,7 +65,7 @@ const generateRequestSchema = z.object({
   prompt: z.string()
     .min(1, 'Prompt is required')
     .max(config.limits.maxPromptLength, `Prompt must be less than ${config.limits.maxPromptLength} characters`),
-  mode: z.enum(['VERTICAL', 'HORIZONTAL']).default('VERTICAL'),
+  mode: z.enum(['VERTICAL_FIRST', 'HORIZONTAL']).default('VERTICAL_FIRST'),
   duration: z.number()
     .min(1, 'Duration must be at least 1 second')
     .max(config.veo3.maxDuration, `Duration cannot exceed ${config.veo3.maxDuration} seconds`)
@@ -121,8 +135,8 @@ router.post('/', upload.single('referenceImage'), async (req: Request, res: Resp
     const requestData = validationResult.data;
 
     // TODO: Check user limits and permissions
-    // const userId = req.user?.id || 'anonymous';
-    const userId = 'demo_user'; // Mock user for now
+    // For testing, use our demo user
+    const userId = 'b6109de6-52e2-4511-b121-e00be0fcf92a';
 
     // Create job record in database (if available) or mock database
     let job;
@@ -212,7 +226,7 @@ router.post('/', upload.single('referenceImage'), async (req: Request, res: Resp
         data: {
           status: 'PENDING',
           metadata: JSON.stringify({
-            ...(typeof job.metadata === 'string' ? JSON.parse(job.metadata) : job.metadata),
+            ...(typeof job.metadata === 'string' ? safeParseObject(job.metadata) : job.metadata),
             queueJobId: queueResult.jobId,
             estimatedWaitTime: queueResult.estimatedWaitTime,
             queuePosition: queueResult.queuePosition,
@@ -620,8 +634,8 @@ router.get('/', async (req: Request, res: Response) => {
     const type = req.query.type as string;
     const mode = req.query.mode as string;
 
-    // TODO: Get actual user ID from authentication
-    const userId = 'demo_user';
+    // For testing, use our demo user
+    const userId = 'b6109de6-52e2-4511-b121-e00be0fcf92a';
 
     // Build where clause
     const where: any = { userId };
@@ -751,7 +765,7 @@ router.post('/:id/retry', async (req: Request, res: Response) => {
       const metadata = job.metadata as any;
       await generationQueue.addGenerationJob({
         generationId: job.id,
-        userId: job.userId || 'demo_user',
+        userId: job.userId || 'b6109de6-52e2-4511-b121-e00be0fcf92a',
         prompt: job.prompt!,
         mode: job.mode,
         duration: metadata.duration,

@@ -116,12 +116,20 @@ COMPOSITION GUIDELINES:
         }
       });
 
+      const ct1 = response.headers.get('content-type') || '';
+      const text1 = await response.text();
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Operation status check failed: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+        let errMsg = 'Unknown error';
+        try {
+          const data = JSON.parse(text1);
+          errMsg = data?.error?.message || errMsg;
+        } catch {}
+        throw new Error(`Operation status check failed: ${response.status} ${response.statusText} - ${errMsg}`);
       }
-
-      const operation = await response.json();
+      if (!ct1.includes('application/json')) {
+        throw new Error(`Non-JSON response from operations endpoint: ${ct1} -> ${text1.slice(0, 200)}`);
+      }
+      const operation = JSON.parse(text1);
 
       logger.debug('Operation status retrieved', {
         operationId,
@@ -467,12 +475,20 @@ COMPOSITION GUIDELINES:
         })
       });
 
+      const ct2 = response.headers.get('content-type') || '';
+      const text2 = await response.text();
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Veo 3 API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+        let errMsg = 'Unknown error';
+        try {
+          const data = JSON.parse(text2);
+          errMsg = data?.error?.message || errMsg;
+        } catch {}
+        throw new Error(`Veo 3 API error: ${response.status} ${response.statusText} - ${errMsg}`);
       }
-
-      const operationData = await response.json();
+      if (!ct2.includes('application/json')) {
+        throw new Error(`Non-JSON response from Veo 3 API: ${ct2} -> ${text2.slice(0, 200)}`);
+      }
+      const operationData = JSON.parse(text2);
       
       logger.veoApi('Veo 3 operation started', {
         operationId: operationData.name,

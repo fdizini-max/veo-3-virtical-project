@@ -22,6 +22,7 @@ import { ImageUpload } from './ImageUpload';
 import { ModeSelector } from './ModeSelector';
 import { BackgroundSelector } from './BackgroundSelector';
 import { GenerateButton } from './GenerateButton';
+import { readJsonOrThrow } from '@/lib/http';
 
 /**
  * Core Generation Form - Simplified version matching exact specifications
@@ -142,7 +143,8 @@ export function GenerationForm() {
       // Prepare form data for API
       const apiFormData = new FormData();
       apiFormData.append('prompt', formData.prompt);
-      apiFormData.append('mode', formData.mode);
+      // Backend expects 'VERTICAL_FIRST' or 'HORIZONTAL'
+      apiFormData.append('mode', formData.mode === 'VERTICAL' ? 'VERTICAL_FIRST' : 'HORIZONTAL');
       apiFormData.append('backgroundMode', formData.backgroundMode);
       apiFormData.append('duration', formData.duration.toString());
       
@@ -150,18 +152,15 @@ export function GenerationForm() {
         apiFormData.append('referenceImage', formData.referenceImage);
       }
 
-      // Call API
-      const response = await fetch('/api/v1/generate', {
+      // Call API (backend server)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${apiBase}/generate`, {
         method: 'POST',
         body: apiFormData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Generation failed');
-      }
-
-      const result = await response.json();
+      const result = await readJsonOrThrow(response);
+      console.log('Generation result:', result);
       
       // Redirect to status page
       router.push(`/generate/${result.id}`);

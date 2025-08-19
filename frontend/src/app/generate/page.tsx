@@ -1,4 +1,4 @@
-import { GenerationForm } from '@/components/generation/GenerationForm';
+import { GenerationForm } from '@/components/GenerationForm';
 
 export default function GeneratePage() {
   return (

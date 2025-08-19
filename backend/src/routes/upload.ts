@@ -105,11 +105,23 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
     tempFilePath = req.file.path;
 
     // Validate metadata
+    let parsedTags: string[] | undefined;
+    if (typeof req.body.tags === 'string') {
+      try {
+        parsedTags = JSON.parse(req.body.tags);
+      } catch (_e) {
+        return res.status(400).json({
+          error: 'Invalid upload metadata',
+          message: 'tags must be a valid JSON array of strings'
+        });
+      }
+    }
+
     const metadataResult = uploadMetadataSchema.safeParse({
       type: req.query.type || req.body.type,
       purpose: req.query.purpose || req.body.purpose,
       description: req.body.description,
-      tags: req.body.tags ? JSON.parse(req.body.tags) : undefined,
+      tags: parsedTags,
     });
 
     if (!metadataResult.success) {

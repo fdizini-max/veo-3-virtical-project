@@ -39,7 +39,7 @@ async function createApp() {
 
   // CORS configuration
   app.use(cors({
-    origin: config.frontendUrl,
+    origin: ['http://localhost:3000', 'http://localhost:3001', config.frontendUrl],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],

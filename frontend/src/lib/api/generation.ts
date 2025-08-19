@@ -78,7 +78,7 @@ export const generationAPI = {
    * Create a new video generation
    */
   async createGeneration(formData: FormData): Promise<GenerationResponse> {
-    const response = await apiClient.post('/generation/create', formData, {
+    const response = await apiClient.post('/generate', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
