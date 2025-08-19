@@ -1,15 +1,33 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
 import { storageService } from '@/services/storage.service';
 import { logger } from '@/utils/logger';
 import { config } from '@/config';
+import { mockDb } from '@/db/mock-adapter';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 
 const router = Router();
-const prisma = new PrismaClient();
+let prisma: any = null;
+
+// Initialize Prisma client with error handling
+async function initializePrisma() {
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    prisma = new PrismaClient();
+    logger.info('Prisma client initialized successfully in upload routes');
+  } catch (error) {
+    logger.warn('Failed to initialize Prisma client in upload routes, using mock database', {
+      error: error.message
+    });
+  }
+}
+
+// Helper function to check database availability
+function isDatabaseAvailable(): boolean {
+  return prisma !== null;
+}
 
 // Configure multer for different upload types
 const storage = multer.diskStorage({

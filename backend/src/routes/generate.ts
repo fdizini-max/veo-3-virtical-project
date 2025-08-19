@@ -1,15 +1,34 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
 import { generationQueue } from '@/queue/generation.queue';
 import { exportQueue } from '@/queue/export.queue';
 import { logger } from '@/utils/logger';
 import { config } from '@/config';
+import { mockDb } from '@/db/mock-adapter';
 import multer from 'multer';
 import path from 'path';
 
 const router = Router();
-const prisma = new PrismaClient();
+let prisma: any = null;
+
+// Initialize Prisma client with error handling
+async function initializePrisma() {
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    prisma = new PrismaClient();
+    logger.info('Prisma client initialized successfully');
+  } catch (error) {
+    logger.warn('Failed to initialize Prisma client, using mock database', {
+      error: error.message
+    });
+    // Continue without database for testing
+  }
+}
+
+// Helper function to check database availability
+function isDatabaseAvailable(): boolean {
+  return prisma !== null;
+}
 
 // Configure multer for file uploads
 const upload = multer({
@@ -66,6 +85,11 @@ const exportRequestSchema = z.object({
  * POST /api/generate - Create new video generation job
  */
 router.post('/', upload.single('referenceImage'), async (req: Request, res: Response) => {
+  // Initialize Prisma on first request
+  if (prisma === null) {
+    await initializePrisma();
+  }
+
   try {
     logger.info('New generation request received', {
       requestId: req.requestId,
@@ -100,9 +124,38 @@ router.post('/', upload.single('referenceImage'), async (req: Request, res: Resp
     // const userId = req.user?.id || 'anonymous';
     const userId = 'demo_user'; // Mock user for now
 
-    // Create job record in database
-    const job = await prisma.job.create({
-      data: {
+    // Create job record in database (if available) or mock database
+    let job;
+    if (isDatabaseAvailable() && prisma) {
+      job = await prisma.job.create({
+        data: {
+          type: 'GENERATE',
+          status: 'PENDING',
+          prompt: requestData.prompt,
+          mode: requestData.mode,
+          metadata: JSON.stringify({
+            duration: requestData.duration,
+            fps: requestData.fps,
+            resolution: requestData.resolution,
+            backgroundMode: requestData.backgroundMode,
+            useFastModel: requestData.useFastModel,
+            hasReferenceImage: !!req.file,
+            ...(req.file && {
+              referenceImage: {
+                originalName: req.file.originalname,
+                filename: req.file.filename,
+                mimetype: req.file.mimetype,
+                size: req.file.size,
+              }
+            }),
+            requestId: req.requestId,
+          }),
+          userId,
+        },
+      });
+    } else {
+      // Use mock database for testing
+      job = await mockDb.createJob({
         type: 'GENERATE',
         status: 'PENDING',
         prompt: requestData.prompt,
@@ -125,8 +178,13 @@ router.post('/', upload.single('referenceImage'), async (req: Request, res: Resp
           requestId: req.requestId,
         },
         userId,
-      },
-    });
+      });
+      
+      logger.warn('Using mock database for job creation', {
+        jobId: job.id,
+        requestId: req.requestId
+      });
+    }
 
     // Add job to generation queue
     const queueResult = await generationQueue.addGenerationJob({
@@ -148,18 +206,31 @@ router.post('/', upload.single('referenceImage'), async (req: Request, res: Resp
     });
 
     // Update job with queue information
-    await prisma.job.update({
-      where: { id: job.id },
-      data: {
+    if (isDatabaseAvailable() && prisma) {
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+          status: 'PENDING',
+          metadata: JSON.stringify({
+            ...(typeof job.metadata === 'string' ? JSON.parse(job.metadata) : job.metadata),
+            queueJobId: queueResult.jobId,
+            estimatedWaitTime: queueResult.estimatedWaitTime,
+            queuePosition: queueResult.queuePosition,
+          }),
+        },
+      });
+    } else {
+      // Update mock database
+      await mockDb.updateJob(job.id, {
         status: 'PENDING',
         metadata: {
-          ...job.metadata as any,
+          ...job.metadata,
           queueJobId: queueResult.jobId,
           estimatedWaitTime: queueResult.estimatedWaitTime,
           queuePosition: queueResult.queuePosition,
         },
-      },
-    });
+      });
+    }
 
     logger.info('Generation job created and queued', {
       jobId: job.id,
